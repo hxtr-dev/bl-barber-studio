@@ -5,7 +5,14 @@ import "./globals.css";
 const display = Playfair_Display({ subsets: ["latin"], weight: ["600", "700", "800"], variable: "--font-display" });
 const sans = Montserrat({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-sans" });
 
-const site = (process.env.SITE_URL || "https://blbarberstudio.com.br").replace(/\/$/, "");
+// Endereço público do site, usado na prévia de links (WhatsApp, Instagram...).
+// Sem SITE_URL, usa o endereço de produção que a própria Vercel informa.
+const site = (
+  process.env.SITE_URL ||
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000")
+).replace(/\/$/, "");
+
+const ogImage = { url: "/og.jpg?v=2", width: 1200, height: 630, alt: "Logo da BL Barber Studio" };
 
 export const metadata: Metadata = {
   metadataBase: new URL(site),
@@ -13,11 +20,19 @@ export const metadata: Metadata = {
   description:
     "Corte masculino, barba e sobrancelha em Carapicuíba - SP. Veja os preços, o horário de atendimento e agende seu horário online com Pix.",
   openGraph: {
-    title: "BL Barber Studio",
-    description: "Mais que um corte. Sua identidade. Agende seu horário online.",
-    images: ["/og.jpg"],
+    title: "BL Barber Studio | Agende seu horário",
+    description: "Mais que um corte. Sua identidade. Corte, barba e sobrancelha em Carapicuíba. Agende online.",
+    url: "/",
+    siteName: "BL Barber Studio",
+    images: [ogImage],
     locale: "pt_BR",
     type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "BL Barber Studio | Agende seu horário",
+    description: "Mais que um corte. Sua identidade. Agende online.",
+    images: [ogImage.url],
   },
 };
 

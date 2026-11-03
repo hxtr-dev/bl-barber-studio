@@ -153,14 +153,29 @@ export async function getBookingByCode(code: string) {
   const rows = await query<{
     id: string; code: string; customer_name: string; starts_at: Date; ends_at: Date; duration_min: number;
     total_cents: number; deposit_cents: number; status: string; needs_refund: boolean; payment_url: string | null;
-    expires_at: Date | null; services: string[];
+    expires_at: Date | null; claimed_at: Date | null; services: string[];
   }>(
     `select b.id, b.code, b.customer_name, b.starts_at, b.ends_at, b.duration_min, b.total_cents, b.deposit_cents,
-            b.status, b.needs_refund, b.payment_url, b.expires_at,
+            b.status, b.needs_refund, b.payment_url, b.expires_at, b.claimed_at,
             coalesce(array_agg(i.name order by i.id) filter (where i.id is not null), '{}') as services
        from bookings b left join booking_items i on i.booking_id = b.id
       where b.code = $1 group by b.id`,
     [code],
   );
   return rows[0] ?? null;
+}
+
+/**
+ * Pix no site: o cliente avisa que pagou. O horário fica segurado por mais tempo
+ * (até o Biel conferir o banco e confirmar no painel).
+ */
+export async function claimPayment(code: string) {
+  await expireStale();
+  const rows = await query<{ id: string }>(
+    `update bookings set claimed_at = coalesce(claimed_at, now()),
+            expires_at = greatest(expires_at, now() + interval '12 hours')
+      where code = $1 and status = 'pending' returning id`,
+    [code],
+  );
+  return rows.length > 0;
 }

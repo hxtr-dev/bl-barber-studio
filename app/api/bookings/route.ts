@@ -3,6 +3,7 @@ import { query } from "@/lib/db";
 import { fail, json } from "@/lib/http";
 import { createCheckoutLink, paymentMode } from "@/lib/infinitepay";
 import { normalizePhone } from "@/lib/phone";
+import { pixConfig } from "@/lib/pix";
 import { fmtDateBR, hourLabel } from "@/lib/time";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +19,18 @@ export async function POST(req: Request) {
     if (!Number.isInteger(hour) || hour < 0 || hour > 23) throw new BookingError("Horário inválido");
     if (!Array.isArray(body.serviceIds)) throw new BookingError("Escolha pelo menos um serviço");
 
+    if (paymentMode() === "pix" && !pixConfig()) {
+      console.error("PAYMENT_MODE=pix sem PIX_KEY configurada");
+      throw new BookingError("O pagamento está indisponível agora. Fale com a gente no WhatsApp.", 503);
+    }
+
     const b = await createBooking({ serviceIds: body.serviceIds, date: String(body.date), hour, name, phone });
+
+    if (paymentMode() === "pix") {
+      const url = `/agendar/confirmacao?order_nsu=${encodeURIComponent(b.code)}`;
+      await query(`update bookings set payment_url = $2 where id = $1`, [b.id, url]);
+      return json({ code: b.code, paymentUrl: url });
+    }
 
     if (paymentMode() === "teste") {
       const url = `/agendar/confirmacao?order_nsu=${encodeURIComponent(b.code)}&teste=1`;

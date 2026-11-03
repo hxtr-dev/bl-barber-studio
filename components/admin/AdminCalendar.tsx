@@ -8,7 +8,7 @@ import type { Hours } from "@/lib/types";
 type Booking = {
   id: string; code: string; customer_name: string; customer_phone: string; starts_at: string; ends_at: string;
   duration_min: number; total_cents: number; deposit_cents: number; status: "pending" | "confirmed" | "cancelled" | "expired";
-  paid_at: string | null; needs_refund: boolean; notified_at: string | null; expires_at: string | null; services: string[];
+  paid_at: string | null; needs_refund: boolean; notified_at: string | null; expires_at: string | null; claimed_at: string | null; services: string[];
 };
 
 const WD = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -154,7 +154,8 @@ export function AdminCalendar({ today, hours }: { today: string; hours: Hours })
                 <div className="svc">{b.services.join(" + ")} · {fmtDuration(b.duration_min)}</div>
                 <div className="tags">
                   {b.status === "confirmed" && <span className="tag ok">Sinal pago {brl(b.deposit_cents)}</span>}
-                  {b.status === "pending" && <span className="tag wait">Aguardando Pix até {b.expires_at ? fmtTimeSP(b.expires_at) : "-"}</span>}
+                  {b.status === "pending" && b.claimed_at && <span className="tag wait">Cliente disse que pagou às {fmtTimeSP(b.claimed_at)}: confira o banco</span>}
+                  {b.status === "pending" && !b.claimed_at && <span className="tag wait">Aguardando Pix até {b.expires_at ? fmtTimeSP(b.expires_at) : "-"}</span>}
                   {b.needs_refund && <span className="tag bad">Pagou fora do prazo: devolver {brl(b.deposit_cents)}</span>}
                   <span className="tag">Total {brl(b.total_cents)} · falta {brl(b.total_cents - b.deposit_cents)}</span>
                   <span className="tag">{fmtPhone(b.customer_phone)}</span>

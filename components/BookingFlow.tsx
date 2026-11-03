@@ -20,8 +20,8 @@ function maskPhone(v: string) {
   return `(${d.slice(0, 2)}) ${d.slice(2, d.length - 4)}-${d.slice(-4)}`;
 }
 
-export function BookingFlow(props: { services: Service[]; hours: Hours; daysAhead: number; holdMinutes: number; today: string }) {
-  const { services, hours, daysAhead, holdMinutes, today } = props;
+export function BookingFlow(props: { services: Service[]; hours: Hours; daysAhead: number; holdMinutes: number; today: string; mode: string }) {
+  const { services, hours, daysAhead, holdMinutes, today, mode } = props;
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selected, setSelected] = useState<number[]>([]);
   const [date, setDate] = useState<string | null>(null);
@@ -254,8 +254,9 @@ export function BookingFlow(props: { services: Service[]; hours: Hours; daysAhea
               </div>
             </div>
             <div className="info">
-              Você será levado para a página segura da InfinitePay para pagar com Pix. O horário fica reservado por {holdMinutes} minutos
-              enquanto você paga. Depois disso, ele volta a ficar livre.
+              {mode === "pix"
+                ? `Na próxima tela aparece o QR code e o Pix copia e cola. O horário fica reservado por ${holdMinutes} minutos enquanto você paga. Depois de pagar, toque em "Já paguei" e envie o comprovante no WhatsApp.`
+                : `Você será levado para a página segura da InfinitePay para pagar com Pix. O horário fica reservado por ${holdMinutes} minutos enquanto você paga. Depois disso, ele volta a ficar livre.`}
             </div>
           </>
         )}
@@ -274,7 +275,7 @@ export function BookingFlow(props: { services: Service[]; hours: Hours; daysAhea
             )}
           </div>
           <button className={`btn ${step === 3 ? "btn-gold" : ""}`} disabled={!canNext || sending} onClick={next}>
-            {step === 3 ? (sending ? "Gerando Pix..." : `Pagar ${brl(deposit)} no Pix`) : "Continuar →"}
+            {step === 3 ? (sending ? "Gerando Pix..." : mode === "pix" ? `Gerar Pix de ${brl(deposit)}` : `Pagar ${brl(deposit)} no Pix`) : "Continuar →"}
           </button>
         </div>
       </div>

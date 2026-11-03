@@ -98,3 +98,8 @@
 @keyframes pop { from { transform: scale(.4); opacity: 0; } to { transform: none; opacity: 1; } }
 .spinner { width: 46px; height: 46px; margin: 20px auto; border-radius: 50%; border: 3px solid #2a2a2f; border-top-color: var(--gold); animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+.pix-box { max-width: 420px; margin: 8px auto 0; display: grid; gap: 14px; justify-items: center; background: var(--card); border: 1px solid rgba(201,162,74,.45); border-radius: 18px; padding: 22px; }
+.pix-box img { background: #fff; border-radius: 12px; padding: 8px; width: min(260px, 70vw); height: auto; }
+.pix-box .muted { text-align: center; margin: 0; }
+.pix-code { width: 100%; font-family: ui-monospace, monospace; font-size: 12px; line-height: 1.4; color: var(--grey-light); background: var(--ink); border: 1px dashed var(--line); border-radius: 10px; padding: 10px; word-break: break-all; max-height: 92px; overflow: auto; text-align: left; }

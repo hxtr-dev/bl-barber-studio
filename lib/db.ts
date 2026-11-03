@@ -24,12 +24,27 @@ export function pool(): Pool {
   return globalThis.__blPool;
 }
 
+// Ajustes de banco feitos sozinhos na primeira consulta (não precisa rodar SQL de novo).
+const MIGRATIONS = [`alter table bookings add column if not exists claimed_at timestamptz`];
+let migrated: Promise<void> | null = null;
+function migrate() {
+  migrated ??= (async () => {
+    for (const m of MIGRATIONS) await pool().query(m);
+  })().catch((e) => {
+    migrated = null;
+    console.error("migração", e);
+  });
+  return migrated;
+}
+
 export async function query<T = Record<string, unknown>>(text: string, params: unknown[] = []) {
+  await migrate();
   const res = await pool().query(text, params);
   return res.rows as T[];
 }
 
 export async function tx<T>(fn: (c: PoolClient) => Promise<T>): Promise<T> {
+  await migrate();
   const c = await pool().connect();
   try {
     await c.query("begin");

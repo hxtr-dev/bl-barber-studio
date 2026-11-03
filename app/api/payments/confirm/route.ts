@@ -1,6 +1,7 @@
 import { confirmPayment, getBookingByCode } from "@/lib/booking";
 import { fail, json } from "@/lib/http";
-import { checkPayment } from "@/lib/infinitepay";
+import { checkPayment, paymentMode } from "@/lib/infinitepay";
+import { pixForBooking } from "@/lib/pix";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,9 @@ export async function POST(req: Request) {
         });
       }
     }
-    return json({ booking: await getBookingByCode(code) });
+    const fresh = await getBookingByCode(code);
+    const pix = paymentMode() === "pix" && fresh?.status === "pending" ? await pixForBooking(code, fresh.deposit_cents) : null;
+    return json({ booking: fresh, mode: paymentMode(), pix });
   } catch (e) {
     return fail(e);
   }

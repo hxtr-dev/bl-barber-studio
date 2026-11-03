@@ -11,7 +11,9 @@ import { Stepper } from "./Stepper";
 type Booking = {
   code: string; customer_name: string; starts_at: string; ends_at: string; total_cents: number; deposit_cents: number;
   status: string; needs_refund: boolean; payment_url: string | null; services: string[];
+  expires_at: string | null; claimed_at: string | null;
 };
+type Pix = { copiaECola: string; qr: string; name: string };
 
 const fmtDay = (d: string) => cap(
   new Intl.DateTimeFormat("pt-BR", { timeZone: TZ, weekday: "long", day: "2-digit", month: "long" }).format(new Date(d)));
@@ -24,6 +26,11 @@ export function Confirmation() {
   const [booking, setBooking] = useState<Booking | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tries, setTries] = useState(0);
+  const [mode, setMode] = useState<string>("real");
+  const [pix, setPix] = useState<Pix | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [claiming, setClaiming] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
 
   const load = useCallback(async () => {
     const res = await fetch("/api/payments/confirm", {
@@ -38,7 +45,11 @@ export function Confirmation() {
     });
     const data = await res.json();
     if (!res.ok) setError(data.error || "Não encontramos esse agendamento.");
-    else setBooking(data.booking);
+    else {
+      setBooking(data.booking);
+      if (data.mode) setMode(data.mode);
+      if (data.pix) setPix(data.pix);
+    }
   }, [code, q]);
 
   useEffect(() => {
@@ -49,15 +60,23 @@ export function Confirmation() {
     load();
   }, [code, load]);
 
+  // Pix no site: confere a cada 8s se o Biel já confirmou no painel.
+  useEffect(() => {
+    if (mode !== "pix" || !booking || booking.status !== "pending") return;
+    const t = setInterval(load, 8000);
+    const c = setInterval(() => setNow(Date.now()), 1000);
+    return () => { clearInterval(t); clearInterval(c); };
+  }, [mode, booking, load]);
+
   // A confirmação da InfinitePay pode levar alguns segundos: tenta de novo por até ~1 minuto.
   useEffect(() => {
-    if (!booking || booking.status !== "pending" || isTest || tries >= 20) return;
+    if (!booking || booking.status !== "pending" || isTest || mode === "pix" || tries >= 20) return;
     const t = setTimeout(() => {
       setTries((n) => n + 1);
       load();
     }, 3000);
     return () => clearTimeout(t);
-  }, [booking, tries, isTest, load]);
+  }, [booking, tries, isTest, mode, load]);
 
   useEffect(() => {
     if (booking?.status === "confirmed") {
@@ -72,6 +91,39 @@ export function Confirmation() {
     else setError(data.error);
   }
 
+  async function copy() {
+    if (!pix) return;
+    try {
+      await navigator.clipboard.writeText(pix.copiaECola);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = pix.copiaECola;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      ta.remove();
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  }
+
+  async function claim() {
+    if (!booking) return;
+    const msg =
+      `Olá, Biel! Paguei o sinal de ${brl(booking.deposit_cents)} do agendamento ${booking.code} ` +
+      `(${fmtDay(booking.starts_at)}, ${fmtTimeSP(booking.starts_at)}). Segue o comprovante do Pix:`;
+    // Abre o WhatsApp já na hora do clique (celulares bloqueiam janelas abertas depois de um await).
+    window.open(`https://wa.me/${BUSINESS.whatsapp}?text=${encodeURIComponent(msg)}`, "_blank", "noopener");
+    setClaiming(true);
+    const res = await fetch("/api/payments/claim", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ order_nsu: code }) });
+    const data = await res.json().catch(() => ({}));
+    setClaiming(false);
+    if (res.ok) setBooking(data.booking);
+    else setError(data.error || "Não foi possível registrar o pagamento.");
+  }
+
+  const left = booking?.expires_at ? Math.max(0, new Date(booking.expires_at).getTime() - now) : 0;
+  const mmss = `${String(Math.floor(left / 60000)).padStart(2, "0")}:${String(Math.floor((left % 60000) / 1000)).padStart(2, "0")}`;
   const confirmed = booking?.status === "confirmed";
   const wa = `https://wa.me/${BUSINESS.whatsapp}?text=${encodeURIComponent(`Olá! Fiz o agendamento ${code} pelo site.`)}`;
 
@@ -97,7 +149,36 @@ export function Confirmation() {
 
         {booking && booking.status === "pending" && (
           <div style={{ textAlign: "center" }}>
-            {isTest ? (
+            {mode === "pix" && booking.claimed_at ? (
+              <>
+                <div className="spinner" />
+                <h1 className="book-title">Pagamento enviado!</h1>
+                <p className="book-sub">
+                  Agora é só aguardar o Biel conferir o Pix. Esta página confirma sozinha. Se o WhatsApp não abriu, toque abaixo e envie o comprovante.
+                </p>
+                <button className="btn" onClick={claim}>Enviar comprovante no WhatsApp</button>
+              </>
+            ) : mode === "pix" && pix ? (
+              <>
+                <h1 className="book-title shimmer">Pague o sinal no Pix</h1>
+                <p className="book-sub">
+                  Valor: <b style={{ color: "var(--gold)" }}>{brl(booking.deposit_cents)}</b> · para <b>{pix.name}</b>
+                  <br />
+                  Seu horário fica reservado por <b style={{ color: "#fff" }}>{mmss}</b>
+                </p>
+                <div className="pix-box">
+                  <img src={pix.qr} alt="QR code do Pix" width={260} height={260} />
+                  <p className="muted">Abra o app do seu banco, escolha Pix e leia o QR code. Ou copie o código abaixo.</p>
+                  <div className="pix-code">{pix.copiaECola}</div>
+                  <button className="btn btn-gold" onClick={copy} style={{ width: "100%" }}>
+                    {copied ? "Código copiado ✓" : "Copiar Pix copia e cola"}
+                  </button>
+                  <button className="btn" onClick={claim} disabled={claiming} style={{ width: "100%" }}>
+                    {claiming ? "Enviando..." : "Já paguei: enviar comprovante"}
+                  </button>
+                </div>
+              </>
+            ) : isTest ? (
               <>
                 <h1 className="book-title">Modo de teste</h1>
                 <p className="book-sub">O pagamento real está desligado. Use o botão para simular o Pix.</p>

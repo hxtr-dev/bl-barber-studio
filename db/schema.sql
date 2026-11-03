@@ -52,6 +52,9 @@ create table if not exists bookings (
 
 create index if not exists bookings_starts_at_idx on bookings (starts_at);
 
+-- Pix no site: quando o cliente avisa que pagou
+alter table bookings add column if not exists claimed_at timestamptz;
+
 create table if not exists booking_items (
   id           serial primary key,
   booking_id   uuid not null references bookings(id) on delete cascade,

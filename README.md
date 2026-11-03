@@ -45,11 +45,18 @@ mesmo horário ao mesmo tempo, só uma consegue. O horário fica reservado por 2
 | `ADMIN_PASSWORD` | senha do painel do Biel |
 | `ADMIN_SECRET` | texto aleatório longo (ex.: gere em https://www.uuidgenerator.net e junte dois) |
 | `INFINITEPAY_HANDLE` | InfiniteTag sem o `$` |
-| `PAYMENT_MODE` | `real` (use `teste` só para testar sem pagar) |
+| `PAYMENT_MODE` | `pix` (QR code no site), `real` (página da InfinitePay) ou `teste` (simula, só para testar) |
+| `PIX_KEY` | chave Pix do Biel, usada no modo `pix` (CPF pode ter pontos e traço) |
 
 3. Clique em **Deploy**.
 4. Domínio: em **Settings → Domains**, adicione `blbarberstudio.com.br` e `admin.blbarberstudio.com.br`
    e siga as instruções de DNS que a Vercel mostrar (no Registro.br, em **DNS**).
+
+### Pix no próprio site (modo `pix`)
+Na última etapa o cliente vê o QR code e o Pix copia e cola com o valor do sinal, sem sair do site. Depois de pagar, ele
+toca em **Já paguei**, o WhatsApp do Biel abre com a mensagem pronta para mandar o comprovante, e o horário fica
+segurado por até 12 horas. O Biel confere o banco e toca em **Confirmar sinal** no painel; a tela do cliente confirma sozinha.
+Como é um Pix estático, o banco não avisa o site: a confirmação é sempre manual.
 
 ### Testar sem pagar
 Com `PAYMENT_MODE="teste"`, o último passo mostra um botão **Simular pagamento do sinal**. Nunca deixe assim no ar.

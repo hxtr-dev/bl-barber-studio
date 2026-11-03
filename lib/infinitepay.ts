@@ -1,8 +1,15 @@
 // Checkout Integrado InfinitePay: https://www.infinitepay.io/checkout-documentacao
 const API = "https://api.checkout.infinitepay.io";
 
-export function paymentMode(): "teste" | "real" {
-  return process.env.PAYMENT_MODE === "teste" ? "teste" : "real";
+/**
+ * PAYMENT_MODE:
+ *  "pix"   -> QR code e copia e cola no próprio site (chave PIX_KEY); o Biel confirma no painel
+ *  "real"  -> página de pagamento da InfinitePay, com confirmação automática
+ *  "teste" -> botão de simular pagamento (nunca usar no ar)
+ */
+export function paymentMode(): "teste" | "real" | "pix" {
+  const m = process.env.PAYMENT_MODE;
+  return m === "teste" ? "teste" : m === "pix" ? "pix" : "real";
 }
 
 function headers() {
